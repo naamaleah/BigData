@@ -1,0 +1,154 @@
+ megawatthours        BPAT             Demand     Day.ahead.demand.forecast
+ Length:1536        Mode:logical   Min.   :4867   Min.   :5333             
+ Class :character   NA's:1536      1st Qu.:6527   1st Qu.:6532             
+ Mode  :character                  Median :7087   Median :7102             
+                                   Mean   :7106   Mean   :7111             
+                                   3rd Qu.:7639   3rd Qu.:7617             
+                                   Max.   :9539   Max.   :9797             
+                                   NA's   :9                               
+ Net.generation  Total.interchange   CISO            Demand.1    
+ Min.   : 7521   Min.   : 5646     Mode:logical   Min.   :15786  
+ 1st Qu.:11192   1st Qu.: 8348     NA's:1536      1st Qu.:20499  
+ Median :12483   Median : 9556                    Median :22239  
+ Mean   :12384   Mean   : 9481                    Mean   :22456  
+ 3rd Qu.:13655   3rd Qu.:10608                    3rd Qu.:24288  
+ Max.   :16599   Max.   :14044                    Max.   :29308  
+ NA's   :21      NA's   :21                       NA's   :9      
+ Day.ahead.demand.forecast.1 Net.generation.1 Total.interchange.1
+ Min.   :15052               Min.   : 8685    Min.   :-11049     
+ 1st Qu.:20229               1st Qu.:12552    1st Qu.: -8838     
+ Median :22056               Median :14842    Median : -7494     
+ Mean   :22312               Mean   :14694    Mean   : -6905     
+ 3rd Qu.:24222               3rd Qu.:16970    3rd Qu.: -5319     
+ Max.   :29334               Max.   :21935    Max.   :   379     
+                             NA's   :21       NA's   :23         
+   CPLE            Demand.2     Day.ahead.demand.forecast.2 Net.generation.2
+ Mode:logical   Min.   : 4373   Min.   : 4325               Min.   : 4481   
+ NA's:1536      1st Qu.: 6830   1st Qu.: 6966               1st Qu.: 7051   
+                Median : 7637   Median : 7714               Median : 7877   
+                Mean   : 7705   Mean   : 7725               Mean   : 7767   
+                3rd Qu.: 8562   3rd Qu.: 8471               3rd Qu.: 8486   
+                Max.   :11253   Max.   :11752               Max.   :10433   
+                NA's   :9       NA's   :24                  NA's   :24      
+ Total.interchange.2   ERCO            Demand.3    
+ Min.   :-1922.00    Mode:logical   Min.   :27719  
+ 1st Qu.: -437.50    NA's:1536      1st Qu.:37481  
+ Median :  -27.00                   Median :40490  
+ Mean   :   54.38                   Mean   :42219  
+ 3rd Qu.:  455.00                   3rd Qu.:45466  
+ Max.   : 2959.00                   Max.   :69215  
+ NA's   :24                         NA's   :9      
+ Day.ahead.demand.forecast.3 Net.generation.3 Total.interchange.3
+ Min.   :30593               Min.   :27854    Min.   :-1197.0    
+ 1st Qu.:38135               1st Qu.:37593    1st Qu.: -350.0    
+ Median :40741               Median :40521    Median :   -6.0    
+ Mean   :43487               Mean   :42123    Mean   : -159.2    
+ 3rd Qu.:45998               3rd Qu.:45239    3rd Qu.:   85.0    
+ Max.   :76783               Max.   :68021    Max.   :  852.0    
+                             NA's   :23       NA's   :75         
+   FPL             Demand.4     Day.ahead.demand.forecast.4 Net.generation.4
+ Mode:logical   Min.   :-6831   Min.   : 7796               Min.   :-6409   
+ NA's:1536      1st Qu.:10405   1st Qu.:10116               1st Qu.:10616   
+                Median :12685   Median :12314               Median :12893   
+                Mean   :12576   Mean   :12160               Mean   :12814   
+                3rd Qu.:14122   3rd Qu.:13724               3rd Qu.:14505   
+                Max.   :19732   Max.   :18136               Max.   :19412   
+                NA's   :11      NA's   :1                   NA's   :26      
+ Total.interchange.4   ISNE            Demand.5    
+ Min.   :-644.0      Mode:logical   Min.   :10434  
+ 1st Qu.:  -0.5      NA's:1536      1st Qu.:12981  
+ Median : 182.0                     Median :14366  
+ Mean   : 218.0                     Mean   :14376  
+ 3rd Qu.: 422.0                     3rd Qu.:15746  
+ Max.   :1433.0                     Max.   :18654  
+ NA's   :26                         NA's   :15     
+ Day.ahead.demand.forecast.5 Net.generation.5 Total.interchange.5
+ Min.   :10360               Min.   :  -41    Min.   :-12307     
+ 1st Qu.:12690               1st Qu.:10521    1st Qu.: -2801     
+ Median :14320               Median :11975    Median : -2478     
+ Mean   :14249               Mean   :11953    Mean   : -2434     
+ 3rd Qu.:15780               3rd Qu.:13328    3rd Qu.: -2100     
+ Max.   :18650               Max.   :16987    Max.   :  -953     
+                             NA's   :30       NA's   :30         
+   MISO            Demand.6     Day.ahead.demand.forecast.6 Net.generation.6
+ Mode:logical   Min.   :58107   Min.   : 57601              Min.   :53524   
+ NA's:1536      1st Qu.:71443   1st Qu.: 72302              1st Qu.:68934   
+                Median :76171   Median : 77440              Median :73902   
+                Mean   :76645   Mean   : 77776              Mean   :73885   
+                3rd Qu.:81392   3rd Qu.: 82474              3rd Qu.:78751   
+                Max.   :98962   Max.   :106362              Max.   :93298   
+                NA's   :9                                   NA's   :24      
+ Total.interchange.6   NYIS            Demand.7    
+ Min.   :-10676      Mode:logical   Min.   :13648  
+ 1st Qu.: -5241      NA's:1536      1st Qu.:16516  
+ Median : -3806                     Median :18105  
+ Mean   : -3979                     Mean   :17996  
+ 3rd Qu.: -2544                     3rd Qu.:19490  
+ Max.   :  1382                     Max.   :22500  
+ NA's   :24                         NA's   :10     
+ Day.ahead.demand.forecast.7 Net.generation.7 Total.interchange.7
+ Min.   :13343               Min.   :-2408    Min.   :-6037      
+ 1st Qu.:16031               1st Qu.:13247    1st Qu.:-4124      
+ Median :17762               Median :14776    Median :-3452      
+ Mean   :17488               Mean   :14549    Mean   :-3453      
+ 3rd Qu.:18862               3rd Qu.:15861    3rd Qu.:-2781      
+ Max.   :21480               Max.   :18263    Max.   :-1129      
+                             NA's   :24       NA's   :25         
+   PACW            Demand.8     Day.ahead.demand.forecast.8 Net.generation.8
+ Mode:logical   Min.   : 1842   Min.   :1886                Min.   :  735   
+ NA's:1536      1st Qu.: 2398   1st Qu.:2456                1st Qu.: 1226   
+                Median : 2663   Median :2716                Median : 1457   
+                Mean   : 2696   Mean   :2704                Mean   : 1537   
+                3rd Qu.: 2884   3rd Qu.:2934                3rd Qu.: 1768   
+                Max.   :68679   Max.   :3553                Max.   :67211   
+                NA's   :9                                   NA's   :21      
+ Total.interchange.8   PJM             Demand.9     
+ Min.   :-2358.0     Mode:logical   Min.   : 73011  
+ 1st Qu.:-1467.5     NA's:1536      1st Qu.: 92453  
+ Median :-1182.0                    Median : 98341  
+ Mean   :-1160.2                    Mean   : 98422  
+ 3rd Qu.: -895.5                    3rd Qu.:104644  
+ Max.   :   93.0                    Max.   :117995  
+ NA's   :21                         NA's   :9       
+ Day.ahead.demand.forecast.9 Net.generation.9 Total.interchange.9
+ Min.   : 71576              Min.   : 76887   Min.   :  602      
+ 1st Qu.: 91197              1st Qu.: 96354   1st Qu.: 3014      
+ Median : 97494              Median :102966   Median : 4130      
+ Mean   : 97356              Mean   :103248   Mean   : 4736      
+ 3rd Qu.:103508              3rd Qu.:109287   3rd Qu.: 5450      
+ Max.   :118183              Max.   :128363   Max.   :15772      
+                             NA's   :24       NA's   :24         
+ United.States.Lower.48..region.   Demand.10     
+ Mode:logical                    Min.   :349786  
+ NA's:1536                       1st Qu.:439769  
+                                 Median :466258  
+                                 Mean   :466785  
+                                 3rd Qu.:494021  
+                                 Max.   :559340  
+                                 NA's   :9       
+ Day.ahead.demand.forecast.10 Net.generation.10 Total.interchange.10
+ Min.   :347776               Min.   :345300    Min.   :-18472.0    
+ 1st Qu.:436168               1st Qu.:434087    1st Qu.: -2936.0    
+ Median :462116               Median :460867    Median : -1774.0    
+ Mean   :463376               Mean   :461502    Mean   : -1764.6    
+ 3rd Qu.:489280               3rd Qu.:488279    3rd Qu.:  -481.5    
+ Max.   :582523               Max.   :554735    Max.   :  3766.0    
+                              NA's   :24        NA's   :24          
+    DateTime                        Date                 Hour      
+ Min.   :2021-01-08 01:00:00   Min.   :2021-01-08   Min.   : 0.00  
+ 1st Qu.:2021-01-22 12:45:00   1st Qu.:2021-01-22   1st Qu.: 5.75  
+ Median :2021-02-05 12:30:00   Median :2021-02-05   Median :11.50  
+ Mean   :2021-02-05 09:30:00   Mean   :2021-02-05   Mean   :11.50  
+ 3rd Qu.:2021-02-19 12:15:00   3rd Qu.:2021-02-19   3rd Qu.:17.25  
+ Max.   :2021-03-05 00:00:00   Max.   :2021-03-05   Max.   :23.00  
+                                                                   
+     Minute 
+ Min.   :0  
+ 1st Qu.:0  
+ Median :0  
+ Mean   :0  
+ 3rd Qu.:0  
+ Max.   :0  
+            
+RStudioGD 
+        2 
