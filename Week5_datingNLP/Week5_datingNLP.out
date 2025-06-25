@@ -1,0 +1,558 @@
+> # === שלב 1: טעינת חבילות ===
+> required <- c("tidyverse", "quanteda", "Matrix", "xgboost", "caret", "rpart", "rpart.plot", "Rtsne")
+> for (p in required) if (!require(p, character.only = TRUE)) {
++   install.packages(p, dependencies = TRUE)
++   library(p, character.only = TRUE)
++ }
+> 
+> # === שלב 2: טעינת הנתונים ===
+> profiles <- read.csv("Week5_datingNLP/okcupid_profiles.csv.gz", stringsAsFactors = FALSE)
+> 
+> # === שלב 3: ניקוי ו-tokenization על essay0 בלבד ===
+> toks <- profiles$essay0 |>
++   na.omit() |>
++   corpus() |>
++   tokens(remove_punct = TRUE,
++          remove_symbols = TRUE,
++          remove_numbers = TRUE,
++          remove_url = TRUE) |>
++   tokens_select(stopwords("en"), "remove") |>
++   tokens_wordstem()
+> 
+> # === שלב 4: יצירת מטריצת תכונות (DFM), סינון מילים נדירות, ו-TFIDF ===
+> dfm_mat <- dfm(toks)
+> min_doc_freq <- 0.10 * ndoc(dfm_mat)
+> dfm_trimmed <- dfm_trim(dfm_mat, min_docfreq = min_doc_freq, docfreq_type = "count")
+> dfm_tfidf <- dfm_tfidf(dfm_trimmed)
+> X_sparse <- as(dfm_tfidf, "dgCMatrix")
+> 
+> # === שלב 5: תגיות מגדר והתאמה למסמכים ===
+> labels <- profiles$sex[!is.na(profiles$essay0)] |> as.factor()
+> names(labels) <- docnames(dfm_mat)
+> labels <- labels[docnames(dfm_trimmed)] |> droplevels()
+> stopifnot(length(labels) == nrow(X_sparse))
+> print(table(labels))
+labels
+    f     m 
+24117 35829 
+> 
+> # === שלב 6: אימון עץ החלטה על dfm המלא ===
+> fit_control <- trainControl(method = "cv", number = 10)
+> df_dense <- as.data.frame(as.matrix(X_sparse))
+> tree_model <- train(x = df_dense, y = labels, method = "rpart", trControl = fit_control)
+> print(tree_model)
+CART 
+
+59946 samples
+   67 predictor
+    2 classes: 'f', 'm' 
+
+No pre-processing
+Resampling: Cross-Validated (10 fold) 
+Summary of sample sizes: 53951, 53951, 53952, 53951, 53951, 53952, ... 
+Resampling results across tuning parameters:
+
+  cp           Accuracy   Kappa     
+  0.005680640  0.6302671  0.17166652
+  0.009578306  0.6257464  0.13664620
+  0.015839449  0.6099322  0.05969009
+
+Accuracy was used to select the optimal model using the largest value.
+The final value used for the model was cp = 0.00568064.
+> rpart.plot(tree_model$finalModel)
+> preds <- predict(tree_model, newdata = df_dense)
+> confusionMatrix(preds, labels)
+Confusion Matrix and Statistics
+
+          Reference
+Prediction     f     m
+         f  8000  6011
+         m 16117 29818
+                                         
+               Accuracy : 0.6309         
+                 95% CI : (0.627, 0.6347)
+    No Information Rate : 0.5977         
+    P-Value [Acc > NIR] : < 2.2e-16      
+                                         
+                  Kappa : 0.176          
+                                         
+ Mcnemar's Test P-Value : < 2.2e-16      
+                                         
+            Sensitivity : 0.3317         
+            Specificity : 0.8322         
+         Pos Pred Value : 0.5710         
+         Neg Pred Value : 0.6491         
+             Prevalence : 0.4023         
+         Detection Rate : 0.1335         
+   Detection Prevalence : 0.2337         
+      Balanced Accuracy : 0.5820         
+                                         
+       'Positive' Class : f              
+                                         
+> 
+> # === שלב 7: הסרת מילים מגדריות לפי TF-IDF ===
+> df_tfidf <- dfm_tfidf
+> labels_aligned <- labels[docnames(df_tfidf)]
+> df_male   <- df_tfidf[labels_aligned == "m", ]
+> df_female <- df_tfidf[labels_aligned == "f", ]
+> tfidf_male   <- colMeans(df_male)
+> tfidf_female <- colMeans(df_female)
+> top_male_words   <- names(sort(tfidf_male, decreasing = TRUE))[1:10]
+> top_female_words <- names(sort(tfidf_female, decreasing = TRUE))[1:10]
+> gender_words <- union(top_male_words, top_female_words)
+> print("מילים מגדריות שנבחרו להסרה:")
+[1] "מילים מגדריות שנבחרו להסרה:"
+> print(gender_words)
+ [1] "like"   "love"   "life"   "peopl"  "time"   "thing"  "can"    "just"  
+ [9] "go"     "work"   "friend" "new"   
+> dfm_neutral <- dfm_remove(dfm_trimmed, pattern = gender_words)
+> dfm_tfidf_neutral <- dfm_tfidf(dfm_neutral)
+> X_sparse_neutral <- as(dfm_tfidf_neutral, "dgCMatrix")
+> df_dense_neutral <- as.data.frame(as.matrix(X_sparse_neutral))
+> 
+> # אימון מודל ללא המילים המגדריות
+> tree_model_neutral <- train(x = df_dense_neutral, y = labels, method = "rpart", trControl = fit_control)
+> print(tree_model_neutral)
+CART 
+
+59946 samples
+   55 predictor
+    2 classes: 'f', 'm' 
+
+No pre-processing
+Resampling: Cross-Validated (10 fold) 
+Summary of sample sizes: 53951, 53952, 53952, 53951, 53951, 53951, ... 
+Resampling results across tuning parameters:
+
+  cp           Accuracy   Kappa     
+  0.002550068  0.6213426  0.13226454
+  0.015880914  0.6176560  0.11038096
+  0.020981051  0.6075469  0.05522488
+
+Accuracy was used to select the optimal model using the largest value.
+The final value used for the model was cp = 0.002550068.
+> preds_neutral <- predict(tree_model_neutral, newdata = df_dense_neutral)
+> confusionMatrix(preds_neutral, labels)
+Confusion Matrix and Statistics
+
+          Reference
+Prediction     f     m
+         f  5790  4395
+         m 18327 31434
+                                          
+               Accuracy : 0.621           
+                 95% CI : (0.6171, 0.6248)
+    No Information Rate : 0.5977          
+    P-Value [Acc > NIR] : < 2.2e-16       
+                                          
+                  Kappa : 0.1297          
+                                          
+ Mcnemar's Test P-Value : < 2.2e-16       
+                                          
+            Sensitivity : 0.24008         
+            Specificity : 0.87733         
+         Pos Pred Value : 0.56848         
+         Neg Pred Value : 0.63170         
+             Prevalence : 0.40231         
+         Detection Rate : 0.09659         
+   Detection Prevalence : 0.16990         
+      Balanced Accuracy : 0.55871         
+                                          
+       'Positive' Class : f               
+                                          
+> 
+> # === שלב 8: קלאסטרינג ===
+> mat_clust <- df_dense_neutral
+> set.seed(42)
+> k2 <- kmeans(mat_clust, centers = 2 , nstart = 10, iter.max = 100)
+> k3 <- kmeans(mat_clust, centers = 3 , nstart = 10, iter.max = 100)
+> k4 <- kmeans(mat_clust, centers = 4 , nstart = 10, iter.max = 100)
+Warning messages:
+1: Quick-TRANSfer stage steps exceeded maximum (= 2997300) 
+2: Quick-TRANSfer stage steps exceeded maximum (= 2997300) 
+> k10 <- kmeans(mat_clust, centers = 10, nstart = 10, iter.max = 100)
+> 
+> profiles$cluster_k2  <- profiles$cluster_k3 <- profiles$cluster_k4 <- profiles$cluster_k10 <- NA
+> valid_idx <- which(!is.na(profiles$essay0) & profiles$sex %in% c("m", "f"))
+> profiles$cluster_k2 [valid_idx] <- k2$cluster
+> profiles$cluster_k3 [valid_idx] <- k3$cluster
+> profiles$cluster_k4 [valid_idx] <- k4$cluster
+> profiles$cluster_k10[valid_idx] <- k10$cluster
+> 
+> # === שלב 9+10: יצירת קובץ PDF עם 4 גרפים (PCA + t-SNE) ===
+> library(ggplot2)
+> pdf("Week5_datingNLP.pdf", width = 10, height = 8)
+> 
+> # גרף PCA עם 4 אשכולות
+> pca <- prcomp(mat_clust, rank. = 2, center = TRUE, scale. = TRUE)
+> pca_df <- data.frame(PC1 = pca$x[,1],
++                      PC2 = pca$x[,2],
++                      cluster = factor(k4$cluster))
+> print(
++   ggplot(pca_df, aes(PC1, PC2, color = cluster)) +
++     geom_point(alpha = 0.6) +
++     theme_minimal() +
++     labs(title = "PCA – 4 Clusters (neutral words)")
++ )
+> 
+> # גרף t-SNE עם 4 אשכולות
+> set.seed(123)
+> mat_tsne <- as.matrix(mat_clust)
+> dupes <- duplicated(mat_tsne)
+> mat_tsne_unique <- mat_tsne[!dupes, ]
+> tsne_out <- Rtsne(mat_tsne_unique, dims = 2, perplexity = 30, verbose = TRUE, check_duplicates = FALSE)
+Performing PCA
+Read the 46081 x 50 data matrix successfully!
+OpenMP is working. 1 threads.
+Using no_dims = 2, perplexity = 30.000000, and theta = 0.500000
+Computing input similarities...
+Building tree...
+ - point 10000 of 46081
+ - point 20000 of 46081
+ - point 30000 of 46081
+ - point 40000 of 46081
+Done in 314.01 seconds (sparsity = 0.003632)!
+Learning embedding...
+Iteration 50: error is 111.207133 (50 iterations in 8.74 seconds)
+Iteration 100: error is 111.207133 (50 iterations in 10.06 seconds)
+Iteration 150: error is 111.207133 (50 iterations in 10.37 seconds)
+Iteration 200: error is 111.207133 (50 iterations in 10.62 seconds)
+Iteration 250: error is 111.207133 (50 iterations in 10.59 seconds)
+Iteration 300: error is 6.775309 (50 iterations in 11.89 seconds)
+Iteration 350: error is 5.619319 (50 iterations in 8.93 seconds)
+Iteration 400: error is 5.393555 (50 iterations in 7.88 seconds)
+Iteration 450: error is 5.261025 (50 iterations in 9.00 seconds)
+Iteration 500: error is 5.162427 (50 iterations in 7.87 seconds)
+Iteration 550: error is 5.085839 (50 iterations in 7.83 seconds)
+Iteration 600: error is 5.024913 (50 iterations in 7.88 seconds)
+Iteration 650: error is 4.974462 (50 iterations in 7.93 seconds)
+Iteration 700: error is 4.931416 (50 iterations in 7.88 seconds)
+Iteration 750: error is 4.895019 (50 iterations in 7.90 seconds)
+Iteration 800: error is 4.863339 (50 iterations in 7.96 seconds)
+Iteration 850: error is 4.835120 (50 iterations in 7.89 seconds)
+Iteration 900: error is 4.809865 (50 iterations in 7.98 seconds)
+Iteration 950: error is 4.787045 (50 iterations in 8.10 seconds)
+Iteration 1000: error is 4.766309 (50 iterations in 7.99 seconds)
+Fitting performed in 175.29 seconds.
+> tsne_df <- data.frame(D1 = tsne_out$Y[,1],
++                       D2 = tsne_out$Y[,2],
++                       cluster = factor(k4$cluster[!dupes]))
+> print(
++   ggplot(tsne_df, aes(D1, D2, color = cluster)) +
++     geom_point(alpha = 0.6) +
++     theme_minimal() +
++     labs(title = "t-SNE – 4 Clusters (neutral words, dupes removed)")
++ )
+> 
+> # גרף PCA עם 3 אשכולות
+> pca_k3 <- prcomp(df_dense_neutral, rank. = 2, center = TRUE, scale. = TRUE)
+> print(
++   ggplot(data.frame(PC1 = pca_k3$x[,1],
++                     PC2 = pca_k3$x[,2],
++                     cluster = factor(k3$cluster)),
++          aes(PC1, PC2, color = cluster)) +
++     geom_point(alpha = 0.6) +
++     theme_minimal() +
++     labs(title = "PCA – 3 Clusters")
++ )
+> 
+> # גרף PCA עם 2 אשכולות
+> print(
++   ggplot(data.frame(PC1 = pca_k3$x[,1],
++                     PC2 = pca_k3$x[,2],
++                     cluster = factor(k2$cluster)),
++          aes(PC1, PC2, color = cluster)) +
++     geom_point(alpha = 0.6) +
++     theme_minimal() +
++     labs(title = "PCA – 2 Clusters")
++ )
+> 
+> dev.off()
+RStudioGD 
+        2 
+> # === שלב 1: טעינת חבילות ===
+> required <- c("tidyverse", "quanteda", "Matrix", "xgboost", "caret", "rpart", "rpart.plot", "Rtsne")
+> for (p in required) if (!require(p, character.only = TRUE)) {
++   install.packages(p, dependencies = TRUE)
++   library(p, character.only = TRUE)
++ }
+> 
+> # === שלב 2: טעינת הנתונים ===
+> profiles <- read.csv("Week5_datingNLP/okcupid_profiles.csv.gz", stringsAsFactors = FALSE)
+> 
+> # === שלב 3: ניקוי ו-tokenization על essay0 בלבד ===
+> toks <- profiles$essay0 |>
++   na.omit() |>
++   corpus() |>
++   tokens(remove_punct = TRUE,
++          remove_symbols = TRUE,
++          remove_numbers = TRUE,
++          remove_url = TRUE) |>
++   tokens_select(stopwords("en"), "remove") |>
++   tokens_wordstem()
+> 
+> # === שלב 4: יצירת מטריצת תכונות (DFM), סינון מילים נדירות, ו-TFIDF ===
+> dfm_mat <- dfm(toks)
+> min_doc_freq <- 0.10 * ndoc(dfm_mat)
+> dfm_trimmed <- dfm_trim(dfm_mat, min_docfreq = min_doc_freq, docfreq_type = "count")
+> dfm_tfidf <- dfm_tfidf(dfm_trimmed)
+> X_sparse <- as(dfm_tfidf, "dgCMatrix")
+> 
+> # === שלב 5: תגיות מגדר והתאמה למסמכים ===
+> labels <- profiles$sex[!is.na(profiles$essay0)] |> as.factor()
+> names(labels) <- docnames(dfm_mat)
+> labels <- labels[docnames(dfm_trimmed)] |> droplevels()
+> stopifnot(length(labels) == nrow(X_sparse))
+> print(table(labels))
+labels
+    f     m 
+24117 35829 
+> 
+> # === שלב 6: אימון עץ החלטה על dfm המלא ===
+> fit_control <- trainControl(method = "cv", number = 10)
+> df_dense <- as.data.frame(as.matrix(X_sparse))
+> tree_model <- train(x = df_dense, y = labels, method = "rpart", trControl = fit_control)
+> print(tree_model)
+CART 
+
+59946 samples
+   67 predictor
+    2 classes: 'f', 'm' 
+
+No pre-processing
+Resampling: Cross-Validated (10 fold) 
+Summary of sample sizes: 53952, 53951, 53952, 53951, 53951, 53952, ... 
+Resampling results across tuning parameters:
+
+  cp           Accuracy   Kappa     
+  0.005680640  0.6300337  0.16774796
+  0.009578306  0.6270978  0.14468657
+  0.015839449  0.6080636  0.04909165
+
+Accuracy was used to select the optimal model using the largest value.
+The final value used for the model was cp = 0.00568064.
+> rpart.plot(tree_model$finalModel)
+> preds <- predict(tree_model, newdata = df_dense)
+> confusionMatrix(preds, labels)
+Confusion Matrix and Statistics
+
+          Reference
+Prediction     f     m
+         f  8000  6011
+         m 16117 29818
+                                         
+               Accuracy : 0.6309         
+                 95% CI : (0.627, 0.6347)
+    No Information Rate : 0.5977         
+    P-Value [Acc > NIR] : < 2.2e-16      
+                                         
+                  Kappa : 0.176          
+                                         
+ Mcnemar's Test P-Value : < 2.2e-16      
+                                         
+            Sensitivity : 0.3317         
+            Specificity : 0.8322         
+         Pos Pred Value : 0.5710         
+         Neg Pred Value : 0.6491         
+             Prevalence : 0.4023         
+         Detection Rate : 0.1335         
+   Detection Prevalence : 0.2337         
+      Balanced Accuracy : 0.5820         
+                                         
+       'Positive' Class : f              
+                                         
+> 
+> # === שלב 7: הסרת מילים מגדריות לפי TF-IDF ===
+> df_tfidf <- dfm_tfidf
+> labels_aligned <- labels[docnames(df_tfidf)]
+> df_male   <- df_tfidf[labels_aligned == "m", ]
+> df_female <- df_tfidf[labels_aligned == "f", ]
+> tfidf_male   <- colMeans(df_male)
+> tfidf_female <- colMeans(df_female)
+> top_male_words   <- names(sort(tfidf_male, decreasing = TRUE))[1:10]
+> top_female_words <- names(sort(tfidf_female, decreasing = TRUE))[1:10]
+> gender_words <- union(top_male_words, top_female_words)
+> print("מילים מגדריות שנבחרו להסרה:")
+[1] "מילים מגדריות שנבחרו להסרה:"
+> print(gender_words)
+ [1] "like"   "love"   "life"   "peopl"  "time"   "thing"  "can"    "just"  
+ [9] "go"     "work"   "friend" "new"   
+> dfm_neutral <- dfm_remove(dfm_trimmed, pattern = gender_words)
+> dfm_tfidf_neutral <- dfm_tfidf(dfm_neutral)
+> X_sparse_neutral <- as(dfm_tfidf_neutral, "dgCMatrix")
+> df_dense_neutral <- as.data.frame(as.matrix(X_sparse_neutral))
+> 
+> # אימון מודל ללא המילים המגדריות
+> tree_model_neutral <- train(x = df_dense_neutral, y = labels, method = "rpart", trControl = fit_control)
+> print(tree_model_neutral)
+CART 
+
+59946 samples
+   55 predictor
+    2 classes: 'f', 'm' 
+
+No pre-processing
+Resampling: Cross-Validated (10 fold) 
+Summary of sample sizes: 53951, 53951, 53951, 53953, 53951, 53952, ... 
+Resampling results across tuning parameters:
+
+  cp           Accuracy   Kappa     
+  0.002550068  0.6214929  0.13268632
+  0.015880914  0.6189571  0.11909788
+  0.020981051  0.6025755  0.02994755
+
+Accuracy was used to select the optimal model using the largest value.
+The final value used for the model was cp = 0.002550068.
+> preds_neutral <- predict(tree_model_neutral, newdata = df_dense_neutral)
+> confusionMatrix(preds_neutral, labels)
+Confusion Matrix and Statistics
+
+          Reference
+Prediction     f     m
+         f  5790  4395
+         m 18327 31434
+                                          
+               Accuracy : 0.621           
+                 95% CI : (0.6171, 0.6248)
+    No Information Rate : 0.5977          
+    P-Value [Acc > NIR] : < 2.2e-16       
+                                          
+                  Kappa : 0.1297          
+                                          
+ Mcnemar's Test P-Value : < 2.2e-16       
+                                          
+            Sensitivity : 0.24008         
+            Specificity : 0.87733         
+         Pos Pred Value : 0.56848         
+         Neg Pred Value : 0.63170         
+             Prevalence : 0.40231         
+         Detection Rate : 0.09659         
+   Detection Prevalence : 0.16990         
+      Balanced Accuracy : 0.55871         
+                                          
+       'Positive' Class : f               
+                                          
+> 
+> # === שלב 8: קלאסטרינג ===
+> mat_clust <- df_dense_neutral
+> set.seed(42)
+> k2 <- kmeans(mat_clust, centers = 2 , nstart = 10, iter.max = 100)
+> k3 <- kmeans(mat_clust, centers = 3 , nstart = 10, iter.max = 100)
+> k4 <- kmeans(mat_clust, centers = 4 , nstart = 10, iter.max = 100)
+Warning messages:
+1: Quick-TRANSfer stage steps exceeded maximum (= 2997300) 
+2: Quick-TRANSfer stage steps exceeded maximum (= 2997300) 
+> k10 <- kmeans(mat_clust, centers = 10, nstart = 10, iter.max = 100)
+> 
+> profiles$cluster_k2  <- profiles$cluster_k3 <- profiles$cluster_k4 <- profiles$cluster_k10 <- NA
+> valid_idx <- which(!is.na(profiles$essay0) & profiles$sex %in% c("m", "f"))
+> profiles$cluster_k2 [valid_idx] <- k2$cluster
+> profiles$cluster_k3 [valid_idx] <- k3$cluster
+> profiles$cluster_k4 [valid_idx] <- k4$cluster
+> profiles$cluster_k10[valid_idx] <- k10$cluster
+> 
+> # === שלב 9+10: יצירת קובץ PDF עם 4 גרפים (PCA + t-SNE) ===
+> library(ggplot2)
+> pdf("Week5_datingNLP.pdf", width = 10, height = 8)
+> 
+> # גרף PCA עם 4 אשכולות
+> pca <- prcomp(mat_clust, rank. = 2, center = TRUE, scale. = TRUE)
+> pca_df <- data.frame(PC1 = pca$x[,1],
++                      PC2 = pca$x[,2],
++                      cluster = factor(k4$cluster))
+> print(
++   ggplot(pca_df, aes(PC1, PC2, color = cluster)) +
++     geom_point(alpha = 0.6) +
++     theme_minimal() +
++     labs(title = "PCA – 4 Clusters (neutral words)")
++ )
+> 
+> # גרף t-SNE עם 4 אשכולות
+> set.seed(123)
+> mat_tsne <- as.matrix(mat_clust)
+> dupes <- duplicated(mat_tsne)
+> mat_tsne_unique <- mat_tsne[!dupes, ]
+> tsne_out <- Rtsne(mat_tsne_unique, dims = 2, perplexity = 30, verbose = TRUE, check_duplicates = FALSE)
+Performing PCA
+Read the 46081 x 50 data matrix successfully!
+OpenMP is working. 1 threads.
+Using no_dims = 2, perplexity = 30.000000, and theta = 0.500000
+Computing input similarities...
+Building tree...
+ - point 10000 of 46081
+ - point 20000 of 46081
+ - point 30000 of 46081
+ - point 40000 of 46081
+Done in 305.26 seconds (sparsity = 0.003632)!
+Learning embedding...
+Iteration 50: error is 111.207133 (50 iterations in 8.78 seconds)
+Iteration 100: error is 111.207133 (50 iterations in 10.03 seconds)
+Iteration 150: error is 111.207133 (50 iterations in 10.34 seconds)
+Iteration 200: error is 111.207133 (50 iterations in 10.52 seconds)
+Iteration 250: error is 111.207133 (50 iterations in 10.56 seconds)
+Iteration 300: error is 6.775309 (50 iterations in 11.44 seconds)
+Iteration 350: error is 5.619319 (50 iterations in 8.83 seconds)
+Iteration 400: error is 5.393555 (50 iterations in 7.82 seconds)
+Iteration 450: error is 5.261025 (50 iterations in 7.85 seconds)
+Iteration 500: error is 5.162427 (50 iterations in 7.83 seconds)
+Iteration 550: error is 5.085839 (50 iterations in 7.82 seconds)
+Iteration 600: error is 5.024913 (50 iterations in 7.77 seconds)
+Iteration 650: error is 4.974462 (50 iterations in 7.80 seconds)
+Iteration 700: error is 4.931416 (50 iterations in 7.80 seconds)
+Iteration 750: error is 4.895019 (50 iterations in 7.74 seconds)
+Iteration 800: error is 4.863339 (50 iterations in 7.76 seconds)
+Iteration 850: error is 4.835120 (50 iterations in 7.80 seconds)
+Iteration 900: error is 4.809865 (50 iterations in 7.83 seconds)
+Iteration 950: error is 4.787045 (50 iterations in 7.88 seconds)
+Iteration 1000: error is 4.766309 (50 iterations in 7.86 seconds)
+Fitting performed in 172.07 seconds.
+> tsne_df <- data.frame(D1 = tsne_out$Y[,1],
++                       D2 = tsne_out$Y[,2],
++                       cluster = factor(k4$cluster[!dupes]))
+> print(
++   ggplot(tsne_df, aes(D1, D2, color = cluster)) +
++     geom_point(alpha = 0.6) +
++     theme_minimal() +
++     labs(title = "t-SNE – 4 Clusters (neutral words, dupes removed)")
++ )
+> 
+> # גרף PCA עם 3 אשכולות
+> pca_k3 <- prcomp(df_dense_neutral, rank. = 2, center = TRUE, scale. = TRUE)
+> print(
++   ggplot(data.frame(PC1 = pca_k3$x[,1],
++                     PC2 = pca_k3$x[,2],
++                     cluster = factor(k3$cluster)),
++          aes(PC1, PC2, color = cluster)) +
++     geom_point(alpha = 0.6) +
++     theme_minimal() +
++     labs(title = "PCA – 3 Clusters")
++ )
+> 
+> # גרף PCA עם 2 אשכולות
+> print(
++   ggplot(data.frame(PC1 = pca_k3$x[,1],
++                     PC2 = pca_k3$x[,2],
++                     cluster = factor(k2$cluster)),
++          aes(PC1, PC2, color = cluster)) +
++     geom_point(alpha = 0.6) +
++     theme_minimal() +
++     labs(title = "PCA – 2 Clusters")
++ )
+> # --- גרף PCA עם 10 אשכולות -----------------------------------------------
+> pca_k10 <- prcomp(df_dense_neutral, rank. = 2, center = TRUE, scale. = TRUE)
+> 
+> print(
++   ggplot(data.frame(PC1 = pca_k10$x[,1],
++                     PC2 = pca_k10$x[,2],
++                     cluster = factor(k10$cluster)),
++          aes(PC1, PC2, color = cluster)) +
++     geom_point(alpha = 0.6) +
++     theme_minimal() +
++     labs(title = "PCA – 10 Clusters")
++ )
+> # --------------------------------------------------------------------------
+> 
+> 
+> dev.off()
+RStudioGD 
+        2 
